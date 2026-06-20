@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard VideoTabu</title>
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🎬 VideoTabu</h2>
+                <span class="admin-badge">Admin</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-view="dashboard">
+                    <span>📊</span> Dashboard
+                </button>
+                <button class="nav-item" data-view="posts">
+                    <span>📝</span> Posts
+                </button>
+                <button class="nav-item" data-view="create">
+                    <span>➕</span> Create Post
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard View -->
+            <section id="viewDashboard" class="view active">
+                <div class="view-header">
+                    <h1>Dashboard</h1>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-icon">📝</span>
+                            <div>
+                                <div class="stat-number" id="totalPosts">0</div>
+                                <div class="stat-label">Total Posts</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-icon">🖼️</span>
+                            <div>
+                                <div class="stat-number" id="totalImages">0</div>
+                                <div class="stat-label">Total Images</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-icon">🎬</span>
+                            <div>
+                                <div class="stat-number" id="totalVideos">0</div>
+                                <div class="stat-label">Total Videos</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-icon">👁️</span>
+                            <div>
+                                <div class="stat-number" id="totalViews">0</div>
+                                <div class="stat-label">Total Views</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Posts View -->
+            <section id="viewPosts" class="view hidden">
+                <div class="view-header">
+                    <h1>Manage Posts</h1>
+                    <button class="btn-primary" onclick="showCreatePost()">➕ Create New</button>
+                </div>
+                
+                <div class="posts-controls">
+                    <select id="filterStatus" onchange="loadPosts()">
+                        <option value="all">All Status</option>
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                    </select>
+                    <input type="text" id="searchPosts" placeholder="Search posts..." onkeyup="loadPosts()">
+                </div>
+
+                <div id="postsList" class="posts-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </section>
+
+            <!-- Create Post View -->
+            <section id="viewCreate" class="view hidden">
+                <div class="view-header">
+                    <h1>Create New Post</h1>
+                </div>
+
+                <form id="createPostForm" class="create-form">
+                    <div class="form-group">
+                        <label>Title *</label>
+                        <input type="text" id="postTitle" required placeholder="Masukkan judul post">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Genre</label>
+                        <input type="text" id="postGenre" placeholder="Contoh: Travel, Food, Photography">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="postStatus">
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cover URL</label>
+                        <input type="url" id="postCover" placeholder="URL cover/thumbnail">
+                        <small>Kosongkan untuk auto-generate dari media pertama</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Content (Media)</label>
+                        <div id="mediaContainer">
+                            <div class="media-item-form">
+                                <div class="media-row">
+                                    <select class="media-type-select" onchange="toggleMediaInput(this)">
+                                        <option value="img">Gambar</option>
+                                        <option value="vid">Video</option>
+                                    </select>
+                                    <input type="url" class="media-url" placeholder="URL gambar/video" required>
+                                    <input type="text" class="media-caption" placeholder="Caption (opsional)">
+                                    <button type="button" class="btn-remove" onclick="removeMediaItem(this)">✕</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-secondary" onclick="addMediaItem()">➕ Tambah Media</button>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Simpan Post</button>
+                        <button type="button" class="btn-secondary" onclick="resetForm()">Reset</button>
+                    </div>
+                </form>
+
+                <div id="formResult" class="form-result hidden"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Hapus Post?</h3>
+            <p>Yakin ingin menghapus post ini? Tindakan ini tidak bisa dibatalkan.</p>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeDeleteModal()">Batal</button>
+                <button class="btn-danger" id="confirmDeleteBtn">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/upload.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
