@@ -1,4 +1,11 @@
 // ============================================
+// DEBUG - Cek koneksi
+// ============================================
+console.log('📦 Admin JS loaded');
+console.log('🔍 Checking Supabase...', typeof supabase);
+console.log('🔍 Checking VideoTabuAPI...', typeof VideoTabuAPI);
+
+// ============================================
 // STATE
 // ============================================
 let currentDeleteId = null;
@@ -8,28 +15,17 @@ let allPosts = [];
 // DOM READY
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Admin ready!');
+    console.log('✅ DOM Ready');
     
-    // Setup navigation
     setupNavigation();
-    
-    // Setup sidebar mobile
     setupSidebar();
-    
-    // Load dashboard
-    loadDashboard();
-    
-    // Load recent posts
-    loadRecentPosts();
-    
-    // Setup form
     setupForm();
-    
-    // Setup delete confirmation
     setupDeleteConfirm();
+    addMedia();
     
-    // Add default media item
-    addMediaItem();
+    // Load data
+    loadDashboard();
+    loadRecentPosts();
 });
 
 // ============================================
@@ -38,61 +34,53 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupNavigation() {
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', function() {
-            // Update active state
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             this.classList.add('active');
             
-            // Show view
             const view = this.dataset.view;
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(`view${view.charAt(0).toUpperCase() + view.slice(1)}`).classList.add('active');
             
-            // Load data
             if (view === 'posts') loadPosts();
             if (view === 'dashboard') {
                 loadDashboard();
                 loadRecentPosts();
             }
             
-            // Close sidebar on mobile
             closeSidebar();
         });
     });
 }
 
 // ============================================
-// SIDEBAR MOBILE
+// SIDEBAR
 // ============================================
 function setupSidebar() {
     const menuToggle = document.getElementById('menuToggle');
-    const closeBtn = document.getElementById('closeSidebar');
     const sidebar = document.getElementById('sidebar');
     
-    // Create overlay if not exists
     let overlay = document.querySelector('.sidebar-overlay');
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.className = 'sidebar-overlay';
+        overlay.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:98;';
         document.body.appendChild(overlay);
     }
     
     function openSidebar() {
         sidebar.classList.add('open');
-        overlay.classList.add('active');
+        overlay.style.display = 'block';
         document.body.style.overflow = 'hidden';
     }
     
     function closeSidebarFn() {
         sidebar.classList.remove('open');
-        overlay.classList.remove('active');
+        overlay.style.display = 'none';
         document.body.style.overflow = '';
     }
     
     menuToggle.addEventListener('click', openSidebar);
-    closeBtn.addEventListener('click', closeSidebarFn);
     overlay.addEventListener('click', closeSidebarFn);
-    
-    // Expose for global use
     window.closeSidebar = closeSidebarFn;
 }
 
@@ -101,43 +89,28 @@ function setupSidebar() {
 // ============================================
 async function loadDashboard() {
     try {
+        console.log('📊 Loading dashboard...');
         const stats = await VideoTabuAPI.getStats();
+        console.log('📊 Stats:', stats);
+        
         document.getElementById('totalPosts').textContent = stats.totalPosts || 0;
         document.getElementById('publishedPosts').textContent = stats.publishedPosts || 0;
         document.getElementById('draftPosts').textContent = stats.draftPosts || 0;
         document.getElementById('totalViews').textContent = stats.totalViews || 0;
     } catch (error) {
-        console.error('Stats error:', error);
-        showToast('Error loading stats: ' + error.message, 'error');
+        console.error('❌ Stats error:', error);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
 async function loadRecentPosts() {
     try {
         const posts = await VideoTabuAPI.getPosts(0, 5, 'all', '');
-        const container = document.getElementById('recentPostsList');
-        
-        if (!posts || posts.length === 0) {
-            container.innerHTML = '<div class="loading">Belum ada post</div>';
-            return;
-        }
-        
-        container.innerHTML = posts.map(post => `
-            <div class="post-item">
-                <div class="post-info">
-                    ${post.cover_url ? `<img src="${post.cover_url}" class="post-thumb" />` : '<div class="post-thumb" style="display:flex;align-items:center;justify-content:center;font-size:24px;">📝</div>'}
-                    <div class="post-details">
-                        <h3>${post.title}</h3>
-                        <div class="post-meta">
-                            <span>${post.genre || 'No genre'}</span>
-                            <span class="post-status ${post.status}">${post.status}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
+        renderTableRows('recentPostsTable', posts);
     } catch (error) {
-        console.error('Recent posts error:', error);
+        console.error('❌ Recent posts error:', error);
+        document.getElementById('recentPostsTable').innerHTML = 
+            `<tr><td colspan="4" class="text-center">Error: ${error.message}</td></tr>`;
     }
 }
 
@@ -147,51 +120,58 @@ async function loadRecentPosts() {
 async function loadPosts() {
     const status = document.getElementById('filterStatus').value;
     const search = document.getElementById('searchPosts').value;
-    const container = document.getElementById('postsList');
+    const tbody = document.getElementById('postsTable');
     
-    container.innerHTML = '<div class="loading">Loading...</div>';
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center">Loading...</td></tr>';
     
     try {
         const posts = await VideoTabuAPI.getPosts(0, 50, status, search);
         allPosts = posts;
-        renderPosts(posts);
+        renderTableRows('postsTable', posts);
     } catch (error) {
-        console.error('Load posts error:', error);
-        container.innerHTML = `<div class="loading">Error: ${error.message}</div>`;
-        showToast('Error loading posts: ' + error.message, 'error');
+        console.error('❌ Load posts error:', error);
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center">Error: ${error.message}</td></tr>`;
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
-function renderPosts(posts) {
-    const container = document.getElementById('postsList');
+function renderTableRows(tbodyId, posts) {
+    const tbody = document.getElementById(tbodyId);
     
     if (!posts || posts.length === 0) {
-        container.innerHTML = '<div class="loading">📭 Tidak ada post</div>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center">📭 Tidak ada post</td></tr>';
         return;
     }
     
-    container.innerHTML = posts.map(post => {
+    tbody.innerHTML = posts.map((post, index) => {
         const contentCount = post.content ? JSON.parse(post.content).length : 0;
+        const statusClass = post.status === 'published' ? 'tag-published' : 'tag-draft';
+        
         return `
-        <div class="post-item">
-            <div class="post-info">
-                ${post.cover_url ? `<img src="${post.cover_url}" class="post-thumb" />` : '<div class="post-thumb" style="display:flex;align-items:center;justify-content:center;font-size:24px;">📝</div>'}
-                <div class="post-details">
-                    <h3>${post.title}</h3>
-                    <div class="post-meta">
-                        <span>${post.genre || 'No genre'}</span>
-                        <span>${contentCount} media</span>
-                        <span>${new Date(post.created_at).toLocaleDateString('id-ID')}</span>
-                        <span class="post-status ${post.status}">${post.status}</span>
-                        ${post.view_count ? `<span>👁️ ${post.view_count}</span>` : ''}
-                    </div>
+        <tr>
+            <td>${index + 1}</td>
+            <td>
+                ${post.cover_url 
+                    ? `<img src="${post.cover_url}" class="cover-thumb" />` 
+                    : `<div class="cover-placeholder">📝</div>`}
+            </td>
+            <td>
+                <div class="post-title">${post.title}</div>
+                <div class="post-meta">
+                    <span>${post.genre || '-'}</span>
+                    <span>📎 ${contentCount} media</span>
+                    <span>📅 ${new Date(post.created_at).toLocaleDateString('id-ID')}</span>
+                    <span class="tag ${statusClass}">${post.status}</span>
+                    ${post.view_count ? `<span>👁️ ${post.view_count}</span>` : ''}
                 </div>
-            </div>
-            <div class="post-actions">
-                <button class="btn-edit" onclick="editPost('${post.id}')">✏️</button>
-                <button class="btn-delete" onclick="confirmDelete('${post.id}')">🗑️</button>
-            </div>
-        </div>
+            </td>
+            <td>
+                <div class="action-btns">
+                    <button class="btn-edit" onclick="editPost('${post.id}')">✏️</button>
+                    <button class="btn-delete" onclick="confirmDelete('${post.id}')">🗑️</button>
+                </div>
+            </td>
+        </tr>
     `}).join('');
 }
 
@@ -212,36 +192,33 @@ async function createPost() {
     const coverUrl = document.getElementById('postCover').value.trim() || null;
     
     if (!title) {
-        showToast('Title harus diisi!', 'error');
+        showToast('Judul harus diisi!', 'error');
         return;
     }
     
-    // Collect media items
+    // Collect media
     const mediaItems = [];
-    document.querySelectorAll('.media-item-form').forEach(item => {
-        const type = item.querySelector('.media-type-select').value;
-        const url = item.querySelector('.media-url').value.trim();
-        const caption = item.querySelector('.media-caption').value.trim() || '';
+    document.querySelectorAll('.media-row').forEach(row => {
+        const type = row.querySelector('.media-type').value;
+        const url = row.querySelector('.media-url').value.trim();
+        const cap = row.querySelector('.media-cap').value.trim() || '';
         
         if (url) {
-            const mediaObj = {};
-            mediaObj[type] = url;
-            if (caption) mediaObj.cap = caption;
-            mediaItems.push(mediaObj);
+            const obj = {};
+            obj[type] = url;
+            if (cap) obj.cap = cap;
+            mediaItems.push(obj);
         }
     });
     
-    // Auto-generate cover if not provided
-    let finalCoverUrl = coverUrl;
-    if (!finalCoverUrl && mediaItems.length > 0) {
-        const firstMedia = mediaItems[0];
-        if (firstMedia.img) {
-            finalCoverUrl = firstMedia.img;
-        } else if (firstMedia.vid) {
-            const videoId = extractYouTubeId(firstMedia.vid);
-            if (videoId) {
-                finalCoverUrl = `https://img.youtube.com/vi/${videoId}/0.jpg`;
-            }
+    // Auto cover
+    let finalCover = coverUrl;
+    if (!finalCover && mediaItems.length > 0) {
+        const first = mediaItems[0];
+        if (first.img) finalCover = first.img;
+        else if (first.vid) {
+            const vidId = extractYouTubeId(first.vid);
+            if (vidId) finalCover = `https://img.youtube.com/vi/${vidId}/0.jpg`;
         }
     }
     
@@ -249,20 +226,23 @@ async function createPost() {
         title: title,
         genre: genre || null,
         content: mediaItems.length > 0 ? JSON.stringify(mediaItems) : null,
-        cover_url: finalCoverUrl,
+        cover_url: finalCover,
         status: status,
         view_count: 0
     };
     
     try {
+        console.log('📤 Creating post:', postData);
         const result = await VideoTabuAPI.createPost(postData);
+        console.log('✅ Post created:', result);
+        
         showToast('✅ Post berhasil dibuat!', 'success');
         
         document.getElementById('formResult').innerHTML = `
             <div class="form-result success">
                 ✅ Post berhasil dibuat!<br>
                 <strong>ID:</strong> ${result.id}<br>
-                <strong>Title:</strong> ${result.title}<br>
+                <strong>Judul:</strong> ${result.title}<br>
                 <strong>Status:</strong> ${result.status}
             </div>
         `;
@@ -272,9 +252,10 @@ async function createPost() {
         loadPosts();
         loadDashboard();
         loadRecentPosts();
+        
     } catch (error) {
-        console.error('Create error:', error);
-        showToast('❌ Error: ' + error.message, 'error');
+        console.error('❌ Create error:', error);
+        showToast('Error: ' + error.message, 'error');
         document.getElementById('formResult').innerHTML = `
             <div class="form-result error">
                 ❌ Error: ${error.message}
@@ -285,32 +266,30 @@ async function createPost() {
 }
 
 // ============================================
-// MEDIA MANAGEMENT
+// MEDIA
 // ============================================
-function addMediaItem() {
+function addMedia() {
     const container = document.getElementById('mediaContainer');
-    const item = document.createElement('div');
-    item.className = 'media-item-form';
-    item.innerHTML = `
-        <div class="media-row">
-            <select class="media-type-select">
-                <option value="img">🖼️ Gambar</option>
-                <option value="vid">🎬 Video</option>
-            </select>
-            <input type="url" class="media-url" placeholder="URL media" required>
-            <input type="text" class="media-caption" placeholder="Caption">
-            <button type="button" class="btn-remove" onclick="removeMediaItem(this)">✕</button>
-        </div>
+    const row = document.createElement('div');
+    row.className = 'media-row';
+    row.innerHTML = `
+        <select class="media-type">
+            <option value="img">🖼️ Gambar</option>
+            <option value="vid">🎬 Video</option>
+        </select>
+        <input type="url" class="media-url" placeholder="URL media">
+        <input type="text" class="media-cap" placeholder="Caption">
+        <button type="button" class="btn-remove" onclick="removeMedia(this)">✕</button>
     `;
-    container.appendChild(item);
+    container.appendChild(row);
 }
 
-function removeMediaItem(btn) {
-    const items = document.querySelectorAll('.media-item-form');
-    if (items.length > 1) {
-        btn.closest('.media-item-form').remove();
+function removeMedia(btn) {
+    const rows = document.querySelectorAll('.media-row');
+    if (rows.length > 1) {
+        btn.closest('.media-row').remove();
     } else {
-        showToast('Minimal 1 media item', 'error');
+        showToast('Minimal 1 media', 'error');
     }
 }
 
@@ -323,13 +302,13 @@ function setupDeleteConfirm() {
         
         try {
             await VideoTabuAPI.deletePost(currentDeleteId);
-            showToast('✅ Post berhasil dihapus!', 'success');
+            showToast('✅ Post dihapus!', 'success');
             closeDeleteModal();
             loadPosts();
             loadDashboard();
             loadRecentPosts();
         } catch (error) {
-            showToast('❌ Error: ' + error.message, 'error');
+            showToast('Error: ' + error.message, 'error');
         }
     });
 }
@@ -356,7 +335,7 @@ function showCreatePost() {
 }
 
 function editPost(id) {
-    showToast('✏️ Fitur edit akan segera hadir!', 'info');
+    showToast('✏️ Fitur edit segera hadir', 'info');
 }
 
 function resetForm() {
@@ -364,7 +343,7 @@ function resetForm() {
     document.getElementById('mediaContainer').innerHTML = '';
     document.getElementById('formResult').innerHTML = '';
     document.getElementById('formResult').classList.add('hidden');
-    addMediaItem();
+    addMedia();
 }
 
 function extractYouTubeId(url) {
@@ -375,14 +354,12 @@ function extractYouTubeId(url) {
 
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toastMessage');
+    const msg = document.getElementById('toastMessage');
     
-    toastMessage.textContent = message;
+    msg.textContent = message;
     toast.className = `toast ${type}`;
     toast.classList.remove('hidden');
     
-    clearTimeout(toast._timeout);
-    toast._timeout = setTimeout(() => {
-        toast.classList.add('hidden');
-    }, 4000);
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.add('hidden'), 4000);
 }
