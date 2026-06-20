@@ -1,42 +1,163 @@
+// ============================================
+// STATE
+// ============================================
 let currentDeleteId = null;
+let allPosts = [];
 
-// Navigation
-document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function() {
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        this.classList.add('active');
-        
-        const view = this.dataset.view;
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.getElementById(`view${view.charAt(0).toUpperCase() + view.slice(1)}`).classList.add('active');
-        
-        if (view === 'posts') loadPosts();
-        if (view === 'dashboard') loadDashboard();
-    });
+// ============================================
+// DOM READY
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin ready!');
+    
+    // Setup navigation
+    setupNavigation();
+    
+    // Setup sidebar mobile
+    setupSidebar();
+    
+    // Load dashboard
+    loadDashboard();
+    
+    // Load recent posts
+    loadRecentPosts();
+    
+    // Setup form
+    setupForm();
+    
+    // Setup delete confirmation
+    setupDeleteConfirm();
+    
+    // Add default media item
+    addMediaItem();
 });
 
-// Load Dashboard
+// ============================================
+// NAVIGATION
+// ============================================
+function setupNavigation() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function() {
+            // Update active state
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show view
+            const view = this.dataset.view;
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`view${view.charAt(0).toUpperCase() + view.slice(1)}`).classList.add('active');
+            
+            // Load data
+            if (view === 'posts') loadPosts();
+            if (view === 'dashboard') {
+                loadDashboard();
+                loadRecentPosts();
+            }
+            
+            // Close sidebar on mobile
+            closeSidebar();
+        });
+    });
+}
+
+// ============================================
+// SIDEBAR MOBILE
+// ============================================
+function setupSidebar() {
+    const menuToggle = document.getElementById('menuToggle');
+    const closeBtn = document.getElementById('closeSidebar');
+    const sidebar = document.getElementById('sidebar');
+    
+    // Create overlay if not exists
+    let overlay = document.querySelector('.sidebar-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        document.body.appendChild(overlay);
+    }
+    
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeSidebarFn() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    
+    menuToggle.addEventListener('click', openSidebar);
+    closeBtn.addEventListener('click', closeSidebarFn);
+    overlay.addEventListener('click', closeSidebarFn);
+    
+    // Expose for global use
+    window.closeSidebar = closeSidebarFn;
+}
+
+// ============================================
+// DASHBOARD
+// ============================================
 async function loadDashboard() {
     try {
         const stats = await VideoTabuAPI.getStats();
-        document.getElementById('totalPosts').textContent = stats.totalPosts;
-        document.getElementById('totalImages').textContent = stats.publishedPosts;
-        document.getElementById('totalVideos').textContent = stats.draftPosts;
-        document.getElementById('totalViews').textContent = stats.totalViews;
+        document.getElementById('totalPosts').textContent = stats.totalPosts || 0;
+        document.getElementById('publishedPosts').textContent = stats.publishedPosts || 0;
+        document.getElementById('draftPosts').textContent = stats.draftPosts || 0;
+        document.getElementById('totalViews').textContent = stats.totalViews || 0;
     } catch (error) {
+        console.error('Stats error:', error);
         showToast('Error loading stats: ' + error.message, 'error');
     }
 }
 
-// Load Posts
+async function loadRecentPosts() {
+    try {
+        const posts = await VideoTabuAPI.getPosts(0, 5, 'all', '');
+        const container = document.getElementById('recentPostsList');
+        
+        if (!posts || posts.length === 0) {
+            container.innerHTML = '<div class="loading">Belum ada post</div>';
+            return;
+        }
+        
+        container.innerHTML = posts.map(post => `
+            <div class="post-item">
+                <div class="post-info">
+                    ${post.cover_url ? `<img src="${post.cover_url}" class="post-thumb" />` : '<div class="post-thumb" style="display:flex;align-items:center;justify-content:center;font-size:24px;">📝</div>'}
+                    <div class="post-details">
+                        <h3>${post.title}</h3>
+                        <div class="post-meta">
+                            <span>${post.genre || 'No genre'}</span>
+                            <span class="post-status ${post.status}">${post.status}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Recent posts error:', error);
+    }
+}
+
+// ============================================
+// POSTS LIST
+// ============================================
 async function loadPosts() {
     const status = document.getElementById('filterStatus').value;
     const search = document.getElementById('searchPosts').value;
+    const container = document.getElementById('postsList');
+    
+    container.innerHTML = '<div class="loading">Loading...</div>';
     
     try {
         const posts = await VideoTabuAPI.getPosts(0, 50, status, search);
+        allPosts = posts;
         renderPosts(posts);
     } catch (error) {
+        console.error('Load posts error:', error);
+        container.innerHTML = `<div class="loading">Error: ${error.message}</div>`;
         showToast('Error loading posts: ' + error.message, 'error');
     }
 }
@@ -45,11 +166,13 @@ function renderPosts(posts) {
     const container = document.getElementById('postsList');
     
     if (!posts || posts.length === 0) {
-        container.innerHTML = '<div class="loading">Tidak ada post</div>';
+        container.innerHTML = '<div class="loading">📭 Tidak ada post</div>';
         return;
     }
     
-    container.innerHTML = posts.map(post => `
+    container.innerHTML = posts.map(post => {
+        const contentCount = post.content ? JSON.parse(post.content).length : 0;
+        return `
         <div class="post-item">
             <div class="post-info">
                 ${post.cover_url ? `<img src="${post.cover_url}" class="post-thumb" />` : '<div class="post-thumb" style="display:flex;align-items:center;justify-content:center;font-size:24px;">📝</div>'}
@@ -57,7 +180,7 @@ function renderPosts(posts) {
                     <h3>${post.title}</h3>
                     <div class="post-meta">
                         <span>${post.genre || 'No genre'}</span>
-                        <span>${post.content ? JSON.parse(post.content).length : 0} media</span>
+                        <span>${contentCount} media</span>
                         <span>${new Date(post.created_at).toLocaleDateString('id-ID')}</span>
                         <span class="post-status ${post.status}">${post.status}</span>
                         ${post.view_count ? `<span>👁️ ${post.view_count}</span>` : ''}
@@ -65,28 +188,40 @@ function renderPosts(posts) {
                 </div>
             </div>
             <div class="post-actions">
-                <button class="btn-edit" onclick="editPost('${post.id}')">✏️ Edit</button>
-                <button class="btn-delete" onclick="confirmDelete('${post.id}')">🗑️ Delete</button>
+                <button class="btn-edit" onclick="editPost('${post.id}')">✏️</button>
+                <button class="btn-delete" onclick="confirmDelete('${post.id}')">🗑️</button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
-// Create/Edit Post
-document.getElementById('createPostForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const title = document.getElementById('postTitle').value;
-    const genre = document.getElementById('postGenre').value;
+// ============================================
+// CREATE POST
+// ============================================
+function setupForm() {
+    document.getElementById('createPostForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await createPost();
+    });
+}
+
+async function createPost() {
+    const title = document.getElementById('postTitle').value.trim();
+    const genre = document.getElementById('postGenre').value.trim();
     const status = document.getElementById('postStatus').value;
-    const coverUrl = document.getElementById('postCover').value || null;
+    const coverUrl = document.getElementById('postCover').value.trim() || null;
+    
+    if (!title) {
+        showToast('Title harus diisi!', 'error');
+        return;
+    }
     
     // Collect media items
     const mediaItems = [];
     document.querySelectorAll('.media-item-form').forEach(item => {
         const type = item.querySelector('.media-type-select').value;
-        const url = item.querySelector('.media-url').value;
-        const caption = item.querySelector('.media-caption').value || '';
+        const url = item.querySelector('.media-url').value.trim();
+        const caption = item.querySelector('.media-caption').value.trim() || '';
         
         if (url) {
             const mediaObj = {};
@@ -103,7 +238,6 @@ document.getElementById('createPostForm').addEventListener('submit', async funct
         if (firstMedia.img) {
             finalCoverUrl = firstMedia.img;
         } else if (firstMedia.vid) {
-            // Extract YouTube thumbnail
             const videoId = extractYouTubeId(firstMedia.vid);
             if (videoId) {
                 finalCoverUrl = `https://img.youtube.com/vi/${videoId}/0.jpg`;
@@ -122,19 +256,25 @@ document.getElementById('createPostForm').addEventListener('submit', async funct
     
     try {
         const result = await VideoTabuAPI.createPost(postData);
-        showToast('Post berhasil dibuat!', 'success');
+        showToast('✅ Post berhasil dibuat!', 'success');
+        
         document.getElementById('formResult').innerHTML = `
             <div class="form-result success">
                 ✅ Post berhasil dibuat!<br>
                 <strong>ID:</strong> ${result.id}<br>
-                <strong>Title:</strong> ${result.title}
+                <strong>Title:</strong> ${result.title}<br>
+                <strong>Status:</strong> ${result.status}
             </div>
         `;
         document.getElementById('formResult').classList.remove('hidden');
+        
         resetForm();
         loadPosts();
+        loadDashboard();
+        loadRecentPosts();
     } catch (error) {
-        showToast('Error: ' + error.message, 'error');
+        console.error('Create error:', error);
+        showToast('❌ Error: ' + error.message, 'error');
         document.getElementById('formResult').innerHTML = `
             <div class="form-result error">
                 ❌ Error: ${error.message}
@@ -142,21 +282,23 @@ document.getElementById('createPostForm').addEventListener('submit', async funct
         `;
         document.getElementById('formResult').classList.remove('hidden');
     }
-});
+}
 
-// Media Management
+// ============================================
+// MEDIA MANAGEMENT
+// ============================================
 function addMediaItem() {
     const container = document.getElementById('mediaContainer');
     const item = document.createElement('div');
     item.className = 'media-item-form';
     item.innerHTML = `
         <div class="media-row">
-            <select class="media-type-select" onchange="toggleMediaInput(this)">
-                <option value="img">Gambar</option>
-                <option value="vid">Video</option>
+            <select class="media-type-select">
+                <option value="img">🖼️ Gambar</option>
+                <option value="vid">🎬 Video</option>
             </select>
-            <input type="url" class="media-url" placeholder="URL gambar/video" required>
-            <input type="text" class="media-caption" placeholder="Caption (opsional)">
+            <input type="url" class="media-url" placeholder="URL media" required>
+            <input type="text" class="media-caption" placeholder="Caption">
             <button type="button" class="btn-remove" onclick="removeMediaItem(this)">✕</button>
         </div>
     `;
@@ -164,26 +306,34 @@ function addMediaItem() {
 }
 
 function removeMediaItem(btn) {
-    const item = btn.closest('.media-item-form');
-    if (document.querySelectorAll('.media-item-form').length > 1) {
-        item.remove();
+    const items = document.querySelectorAll('.media-item-form');
+    if (items.length > 1) {
+        btn.closest('.media-item-form').remove();
     } else {
         showToast('Minimal 1 media item', 'error');
     }
 }
 
-function toggleMediaInput(select) {
-    // Just visual feedback, nothing else needed
+// ============================================
+// DELETE
+// ============================================
+function setupDeleteConfirm() {
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+        if (!currentDeleteId) return;
+        
+        try {
+            await VideoTabuAPI.deletePost(currentDeleteId);
+            showToast('✅ Post berhasil dihapus!', 'success');
+            closeDeleteModal();
+            loadPosts();
+            loadDashboard();
+            loadRecentPosts();
+        } catch (error) {
+            showToast('❌ Error: ' + error.message, 'error');
+        }
+    });
 }
 
-// Extract YouTube ID
-function extractYouTubeId(url) {
-    if (!url) return null;
-    const match = url.match(/(?:youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([^?&]+)/);
-    return match ? match[1] : null;
-}
-
-// Delete Confirmation
 function confirmDelete(id) {
     currentDeleteId = id;
     document.getElementById('deleteModal').classList.remove('hidden');
@@ -194,43 +344,35 @@ function closeDeleteModal() {
     currentDeleteId = null;
 }
 
-document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
-    if (!currentDeleteId) return;
-    
-    try {
-        await VideoTabuAPI.deletePost(currentDeleteId);
-        showToast('Post berhasil dihapus!', 'success');
-        closeDeleteModal();
-        loadPosts();
-        loadDashboard();
-    } catch (error) {
-        showToast('Error: ' + error.message, 'error');
-    }
-});
-
-// Edit Post (placeholder)
-function editPost(id) {
-    showToast('Fitur edit akan segera hadir!', 'info');
-}
-
-// Show Create View
+// ============================================
+// HELPERS
+// ============================================
 function showCreatePost() {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('[data-view="create"]').classList.add('active');
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById('viewCreate').classList.add('active');
+    closeSidebar();
 }
 
-// Reset Form
+function editPost(id) {
+    showToast('✏️ Fitur edit akan segera hadir!', 'info');
+}
+
 function resetForm() {
     document.getElementById('createPostForm').reset();
     document.getElementById('mediaContainer').innerHTML = '';
     document.getElementById('formResult').innerHTML = '';
     document.getElementById('formResult').classList.add('hidden');
-    addMediaItem(); // Add default media item
+    addMediaItem();
 }
 
-// Toast Notification
+function extractYouTubeId(url) {
+    if (!url) return null;
+    const match = url.match(/(?:youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([^?&]+)/);
+    return match ? match[1] : null;
+}
+
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toastMessage');
@@ -239,13 +381,8 @@ function showToast(message, type = 'info') {
     toast.className = `toast ${type}`;
     toast.classList.remove('hidden');
     
-    setTimeout(() => {
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => {
         toast.classList.add('hidden');
-    }, 3000);
+    }, 4000);
 }
-
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    loadDashboard();
-    addMediaItem(); // Add default media item in create form
-});
