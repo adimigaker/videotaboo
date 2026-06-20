@@ -2,206 +2,88 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard VideoTabu</title>
-    
-    <!-- Supabase -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dashboard - VideoTabu</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="dashboard">
-        <!-- Top Navbar -->
-        <header class="topbar">
-            <div class="topbar-left">
-                <button class="menu-toggle" id="menuToggle">☰</button>
-                <span class="brand">🎬 VideoTabu</span>
-                <span class="badge">DASHBOARD</span>
+    <header class="dash-header">
+        <div class="dash-header-inner">
+            <h1>🎬 VideoTabu</h1>
+            <div class="header-actions">
+                <button id="newPostBtn" class="btn-primary">➕ Post Baru</button>
+                <button id="syncBtn" class="btn-secondary">🔄 Sync</button>
             </div>
-            <div class="topbar-right">
-                <a href="/" class="btn-outline" target="_blank">🌐 Lihat Situs</a>
-            </div>
-        </header>
+        </div>
+    </header>
 
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <nav class="sidebar-nav">
-                <button class="nav-item active" data-view="dashboard">
-                    <span>📊</span> Dashboard
-                </button>
-                <button class="nav-item" data-view="posts">
-                    <span>📝</span> Posts
-                </button>
-                <button class="nav-item" data-view="create">
-                    <span>➕</span> Tambah Post
-                </button>
-            </nav>
-        </aside>
+    <main id="postsContainer" class="list-view">
+        <!-- Render by JS -->
+    </main>
 
-        <!-- Main -->
-        <main class="main">
-            <!-- ========== DASHBOARD VIEW ========== -->
-            <section id="viewDashboard" class="view active">
-                <!-- Stats Cards -->
-                <div class="stats-row">
-                    <div class="stat-box">
-                        <div class="stat-number" id="totalPosts">0</div>
-                        <div class="stat-label">TOTAL POSTS</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="publishedPosts">0</div>
-                        <div class="stat-label">PUBLISHED</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="draftPosts">0</div>
-                        <div class="stat-label">DRAFT</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="totalViews">0</div>
-                        <div class="stat-label">TOTAL VIEWS</div>
-                    </div>
+    <!-- Modal Create/Edit Post -->
+    <div id="postModal" class="modal-overlay" style="display:none;">
+        <div class="modal-popup modal-lg">
+            <button class="modal-close" id="closeModalBtn">✕</button>
+            <h2 id="modalTitle">Post Baru</h2>
+            <form id="postForm">
+                <div class="form-group">
+                    <label>Judul *</label>
+                    <input type="text" id="postTitle" required placeholder="Masukkan judul">
                 </div>
-
-                <!-- Recent Posts Table -->
-                <div class="table-card">
-                    <div class="table-header">
-                        <h3>📋 Recent Posts</h3>
-                    </div>
-                    <div class="table-scroll">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>COVER</th>
-                                    <th>JUDUL & INFO</th>
-                                    <th>AKSI</th>
-                                </tr>
-                            </thead>
-                            <tbody id="recentPostsTable">
-                                <tr><td colspan="4" class="text-center">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="form-group">
+                    <label>Genre</label>
+                    <input type="text" id="postGenre" placeholder="Travel, Food, Photography">
                 </div>
-            </section>
-
-            <!-- ========== POSTS VIEW ========== -->
-            <section id="viewPosts" class="view hidden">
-                <div class="view-header">
-                    <h2>📝 Manage Posts</h2>
-                    <button class="btn-primary" onclick="showCreatePost()">➕ Tambah Post</button>
-                </div>
-
-                <div class="filter-bar">
-                    <input type="text" id="searchPosts" placeholder="Cari judul..." onkeyup="loadPosts()">
-                    <select id="filterStatus" onchange="loadPosts()">
-                        <option value="all">Semua Status</option>
-                        <option value="published">Published</option>
-                        <option value="draft">Draft</option>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="postStatus">
+                        <option value="draft">📄 Draft</option>
+                        <option value="published">✅ Published</option>
                     </select>
                 </div>
-
-                <div class="table-card">
-                    <div class="table-scroll">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>COVER</th>
-                                    <th>JUDUL & INFO</th>
-                                    <th>AKSI</th>
-                                </tr>
-                            </thead>
-                            <tbody id="postsTable">
-                                <tr><td colspan="4" class="text-center">Loading...</td></tr>
-                            </tbody>
-                        </table>
+                <div class="form-group">
+                    <label>Cover URL</label>
+                    <div class="thumb-upload-wrap">
+                        <input type="text" id="postCover" placeholder="https://...">
+                        <button type="button" id="uploadCoverBtn" class="btn-secondary">📤 Upload</button>
+                    </div>
+                    <div id="coverPreview" style="display:none;margin-top:8px;">
+                        <img id="coverPreviewImg" style="max-width:100%;max-height:120px;border-radius:6px;">
+                        <button id="removeCoverBtn" class="btn-remove-sm">✕</button>
                     </div>
                 </div>
-            </section>
-
-            <!-- ========== CREATE VIEW ========== -->
-            <section id="viewCreate" class="view hidden">
-                <div class="view-header">
-                    <h2>➕ Tambah Post Baru</h2>
+                <div class="form-group">
+                    <label>Konten Media (JSON)</label>
+                    <textarea id="postContent" rows="6" placeholder='[{"img":"https://...","cap":"Caption"},{"vid":"https://...","cap":"Caption"}]'></textarea>
+                    <small>Format: [{"img":"url","cap":"caption"}, {"vid":"url","cap":"caption"}]</small>
                 </div>
-
-                <div class="form-card">
-                    <form id="createPostForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Judul *</label>
-                                <input type="text" id="postTitle" required placeholder="Masukkan judul">
-                            </div>
-                            <div class="form-group">
-                                <label>Genre</label>
-                                <input type="text" id="postGenre" placeholder="Travel, Food, dll">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Status</label>
-                                <select id="postStatus">
-                                    <option value="draft">📄 Draft</option>
-                                    <option value="published">✅ Published</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Cover URL</label>
-                                <input type="url" id="postCover" placeholder="https://...">
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Konten Media</label>
-                            <div id="mediaContainer">
-                                <div class="media-row">
-                                    <select class="media-type">
-                                        <option value="img">🖼️ Gambar</option>
-                                        <option value="vid">🎬 Video</option>
-                                    </select>
-                                    <input type="url" class="media-url" placeholder="URL media">
-                                    <input type="text" class="media-cap" placeholder="Caption">
-                                    <button type="button" class="btn-remove" onclick="removeMedia(this)">✕</button>
-                                </div>
-                            </div>
-                            <button type="button" class="btn-add" onclick="addMedia()">➕ Tambah Media</button>
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" class="btn-primary">💾 Simpan</button>
-                            <button type="button" class="btn-outline" onclick="resetForm()">🔄 Reset</button>
-                        </div>
-                    </form>
-
-                    <div id="formResult" class="form-result hidden"></div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">💾 Simpan</button>
+                    <button type="button" class="btn-secondary" id="cancelModalBtn">Batal</button>
                 </div>
-            </section>
-        </main>
+            </form>
+            <div id="formResult" style="display:none;"></div>
+        </div>
     </div>
 
-    <!-- Delete Modal -->
-    <div id="deleteModal" class="modal hidden">
-        <div class="modal-box">
+    <!-- Modal Delete -->
+    <div id="deleteModal" class="modal-overlay" style="display:none;">
+        <div class="modal-popup modal-sm">
             <h3>🗑️ Hapus Post?</h3>
-            <p>Yakin ingin menghapus post ini?</p>
-            <div class="modal-actions">
-                <button class="btn-outline" onclick="closeDeleteModal()">Batal</button>
+            <p>Yakin ingin menghapus <strong id="deletePostName"></strong>?</p>
+            <div class="confirm-actions">
+                <button class="btn-secondary" id="cancelDeleteBtn">Batal</button>
                 <button class="btn-danger" id="confirmDeleteBtn">Hapus</button>
             </div>
         </div>
     </div>
 
     <!-- Toast -->
-    <div id="toast" class="toast hidden">
-        <span id="toastMessage"></span>
-    </div>
+    <div id="toast" class="toast"></div>
 
-    <!-- Di bagian bawah body, urutan harus: -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase.js"></script>
+    <script src="js/api.js"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>
