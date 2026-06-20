@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dashboard VideoTabu</title>
     
     <!-- Supabase -->
@@ -11,12 +11,20 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <!-- Mobile Top Bar -->
+    <div class="mobile-topbar">
+        <button id="menuToggle" class="menu-toggle">☰</button>
+        <h2>🎬 VideoTabu</h2>
+        <span class="admin-badge">Admin</span>
+    </div>
+
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h2>🎬 VideoTabu</h2>
                 <span class="admin-badge">Admin</span>
+                <button id="closeSidebar" class="close-sidebar">✕</button>
             </div>
             
             <nav class="sidebar-nav">
@@ -38,36 +46,42 @@
             <section id="viewDashboard" class="view active">
                 <div class="view-header">
                     <h1>Dashboard</h1>
-                    <div class="stats-grid">
+                    <div class="stats-grid" id="statsGrid">
                         <div class="stat-card">
                             <span class="stat-icon">📝</span>
                             <div>
-                                <div class="stat-number" id="totalPosts">0</div>
+                                <div class="stat-number" id="totalPosts">-</div>
                                 <div class="stat-label">Total Posts</div>
                             </div>
                         </div>
                         <div class="stat-card">
-                            <span class="stat-icon">🖼️</span>
+                            <span class="stat-icon">✅</span>
                             <div>
-                                <div class="stat-number" id="totalImages">0</div>
-                                <div class="stat-label">Total Images</div>
+                                <div class="stat-number" id="publishedPosts">-</div>
+                                <div class="stat-label">Published</div>
                             </div>
                         </div>
                         <div class="stat-card">
-                            <span class="stat-icon">🎬</span>
+                            <span class="stat-icon">📄</span>
                             <div>
-                                <div class="stat-number" id="totalVideos">0</div>
-                                <div class="stat-label">Total Videos</div>
+                                <div class="stat-number" id="draftPosts">-</div>
+                                <div class="stat-label">Draft</div>
                             </div>
                         </div>
                         <div class="stat-card">
                             <span class="stat-icon">👁️</span>
                             <div>
-                                <div class="stat-number" id="totalViews">0</div>
+                                <div class="stat-number" id="totalViews">-</div>
                                 <div class="stat-label">Total Views</div>
                             </div>
                         </div>
                     </div>
+                </div>
+                
+                <!-- Recent Posts Preview -->
+                <div class="recent-posts">
+                    <h2>Recent Posts</h2>
+                    <div id="recentPostsList" class="posts-list"></div>
                 </div>
             </section>
 
@@ -75,7 +89,7 @@
             <section id="viewPosts" class="view hidden">
                 <div class="view-header">
                     <h1>Manage Posts</h1>
-                    <button class="btn-primary" onclick="showCreatePost()">➕ Create New</button>
+                    <button class="btn-primary" onclick="showCreatePost()">➕ New</button>
                 </div>
                 
                 <div class="posts-controls">
@@ -128,12 +142,12 @@
                         <div id="mediaContainer">
                             <div class="media-item-form">
                                 <div class="media-row">
-                                    <select class="media-type-select" onchange="toggleMediaInput(this)">
-                                        <option value="img">Gambar</option>
-                                        <option value="vid">Video</option>
+                                    <select class="media-type-select">
+                                        <option value="img">🖼️ Gambar</option>
+                                        <option value="vid">🎬 Video</option>
                                     </select>
-                                    <input type="url" class="media-url" placeholder="URL gambar/video" required>
-                                    <input type="text" class="media-caption" placeholder="Caption (opsional)">
+                                    <input type="url" class="media-url" placeholder="URL media" required>
+                                    <input type="text" class="media-caption" placeholder="Caption">
                                     <button type="button" class="btn-remove" onclick="removeMediaItem(this)">✕</button>
                                 </div>
                             </div>
@@ -142,8 +156,8 @@
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn-primary">Simpan Post</button>
-                        <button type="button" class="btn-secondary" onclick="resetForm()">Reset</button>
+                        <button type="submit" class="btn-primary">💾 Simpan Post</button>
+                        <button type="button" class="btn-secondary" onclick="resetForm()">🔄 Reset</button>
                     </div>
                 </form>
 
@@ -155,7 +169,7 @@
     <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="modal hidden">
         <div class="modal-content">
-            <h3>Hapus Post?</h3>
+            <h3>🗑️ Hapus Post?</h3>
             <p>Yakin ingin menghapus post ini? Tindakan ini tidak bisa dibatalkan.</p>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeDeleteModal()">Batal</button>
@@ -169,8 +183,8 @@
         <span id="toastMessage"></span>
     </div>
 
+    <!-- Scripts - Urutan penting! -->
     <script src="js/supabase.js"></script>
-    <script src="js/upload.js"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>
