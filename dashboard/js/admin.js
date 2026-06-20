@@ -1,15 +1,16 @@
 // ============================================
-// DEBUG - Cek koneksi
+// CEK FUNGSI
 // ============================================
-console.log('📦 Admin JS loaded');
-console.log('🔍 Checking Supabase...', typeof supabase);
-console.log('🔍 Checking VideoTabuAPI...', typeof VideoTabuAPI);
+console.log('🔍 Checking functions:');
+console.log('  getPosts:', typeof window.getPosts);
+console.log('  createPost:', typeof window.createPost);
+console.log('  deletePost:', typeof window.deletePost);
+console.log('  getStats:', typeof window.getStats);
 
 // ============================================
 // STATE
 // ============================================
 let currentDeleteId = null;
-let allPosts = [];
 
 // ============================================
 // DOM READY
@@ -17,80 +18,30 @@ let allPosts = [];
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ DOM Ready');
     
+    // Cek fungsi
+    if (typeof window.getPosts === 'undefined') {
+        document.getElementById('postsTable').innerHTML = 
+            '<tr><td colspan="4" class="text-center" style="color:#ef4444;">❌ Error: API tidak terdefinisi. Cek console.</td></tr>';
+        return;
+    }
+    
     setupNavigation();
     setupSidebar();
     setupForm();
     setupDeleteConfirm();
     addMedia();
     
-    // Load data
     loadDashboard();
     loadRecentPosts();
 });
 
 // ============================================
-// NAVIGATION
-// ============================================
-function setupNavigation() {
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', function() {
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            this.classList.add('active');
-            
-            const view = this.dataset.view;
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.getElementById(`view${view.charAt(0).toUpperCase() + view.slice(1)}`).classList.add('active');
-            
-            if (view === 'posts') loadPosts();
-            if (view === 'dashboard') {
-                loadDashboard();
-                loadRecentPosts();
-            }
-            
-            closeSidebar();
-        });
-    });
-}
-
-// ============================================
-// SIDEBAR
-// ============================================
-function setupSidebar() {
-    const menuToggle = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    
-    let overlay = document.querySelector('.sidebar-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.className = 'sidebar-overlay';
-        overlay.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:98;';
-        document.body.appendChild(overlay);
-    }
-    
-    function openSidebar() {
-        sidebar.classList.add('open');
-        overlay.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-    }
-    
-    function closeSidebarFn() {
-        sidebar.classList.remove('open');
-        overlay.style.display = 'none';
-        document.body.style.overflow = '';
-    }
-    
-    menuToggle.addEventListener('click', openSidebar);
-    overlay.addEventListener('click', closeSidebarFn);
-    window.closeSidebar = closeSidebarFn;
-}
-
-// ============================================
-// DASHBOARD
+// FUNGSI DASHBOARD
 // ============================================
 async function loadDashboard() {
     try {
         console.log('📊 Loading dashboard...');
-        const stats = await VideoTabuAPI.getStats();
+        const stats = await window.getStats();
         console.log('📊 Stats:', stats);
         
         document.getElementById('totalPosts').textContent = stats.totalPosts || 0;
@@ -105,7 +56,7 @@ async function loadDashboard() {
 
 async function loadRecentPosts() {
     try {
-        const posts = await VideoTabuAPI.getPosts(0, 5, 'all', '');
+        const posts = await window.getPosts(0, 5, 'all', '');
         renderTableRows('recentPostsTable', posts);
     } catch (error) {
         console.error('❌ Recent posts error:', error);
@@ -115,7 +66,7 @@ async function loadRecentPosts() {
 }
 
 // ============================================
-// POSTS LIST
+// FUNGSI POSTS
 // ============================================
 async function loadPosts() {
     const status = document.getElementById('filterStatus').value;
@@ -125,8 +76,7 @@ async function loadPosts() {
     tbody.innerHTML = '<tr><td colspan="4" class="text-center">Loading...</td></tr>';
     
     try {
-        const posts = await VideoTabuAPI.getPosts(0, 50, status, search);
-        allPosts = posts;
+        const posts = await window.getPosts(0, 50, status, search);
         renderTableRows('postsTable', posts);
     } catch (error) {
         console.error('❌ Load posts error:', error);
@@ -233,7 +183,7 @@ async function createPost() {
     
     try {
         console.log('📤 Creating post:', postData);
-        const result = await VideoTabuAPI.createPost(postData);
+        const result = await window.createPost(postData);
         console.log('✅ Post created:', result);
         
         showToast('✅ Post berhasil dibuat!', 'success');
@@ -301,7 +251,7 @@ function setupDeleteConfirm() {
         if (!currentDeleteId) return;
         
         try {
-            await VideoTabuAPI.deletePost(currentDeleteId);
+            await window.deletePost(currentDeleteId);
             showToast('✅ Post dihapus!', 'success');
             closeDeleteModal();
             loadPosts();
@@ -362,4 +312,60 @@ function showToast(message, type = 'info') {
     
     clearTimeout(toast._timer);
     toast._timer = setTimeout(() => toast.classList.add('hidden'), 4000);
+}
+
+// ============================================
+// NAVIGATION
+// ============================================
+function setupNavigation() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function() {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            this.classList.add('active');
+            
+            const view = this.dataset.view;
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`view${view.charAt(0).toUpperCase() + view.slice(1)}`).classList.add('active');
+            
+            if (view === 'posts') loadPosts();
+            if (view === 'dashboard') {
+                loadDashboard();
+                loadRecentPosts();
+            }
+            
+            closeSidebar();
+        });
+    });
+}
+
+// ============================================
+// SIDEBAR
+// ============================================
+function setupSidebar() {
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    
+    let overlay = document.querySelector('.sidebar-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        overlay.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:98;';
+        document.body.appendChild(overlay);
+    }
+    
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeSidebarFn() {
+        sidebar.classList.remove('open');
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+    
+    menuToggle.addEventListener('click', openSidebar);
+    overlay.addEventListener('click', closeSidebarFn);
+    window.closeSidebar = closeSidebarFn;
 }
