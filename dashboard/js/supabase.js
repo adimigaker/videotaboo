@@ -4,7 +4,6 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 class VideoTabuAPI {
-    // Get all posts with pagination
     static async getPosts(page = 0, limit = 50, status = 'all', search = '') {
         try {
             let query = supabase
@@ -23,14 +22,13 @@ class VideoTabuAPI {
             
             const { data, error } = await query;
             if (error) throw error;
-            return data;
+            return data || [];
         } catch (error) {
             console.error('Error fetching posts:', error);
             throw error;
         }
     }
 
-    // Get single post by ID
     static async getPostById(id) {
         try {
             const { data, error } = await supabase
@@ -47,7 +45,6 @@ class VideoTabuAPI {
         }
     }
 
-    // Create new post
     static async createPost(postData) {
         try {
             const { data, error } = await supabase
@@ -63,7 +60,6 @@ class VideoTabuAPI {
         }
     }
 
-    // Update post
     static async updatePost(id, postData) {
         try {
             const { data, error } = await supabase
@@ -80,7 +76,6 @@ class VideoTabuAPI {
         }
     }
 
-    // Delete post
     static async deletePost(id) {
         try {
             const { error } = await supabase
@@ -96,17 +91,14 @@ class VideoTabuAPI {
         }
     }
 
-    // Get statistics
     static async getStats() {
         try {
-            // Total posts
             const { count: totalPosts, error: error1 } = await supabase
                 .from('videotabu')
                 .select('*', { count: 'exact', head: true });
             
             if (error1) throw error1;
             
-            // Published posts
             const { count: publishedPosts, error: error2 } = await supabase
                 .from('videotabu')
                 .select('*', { count: 'exact', head: true })
@@ -114,7 +106,6 @@ class VideoTabuAPI {
                 
             if (error2) throw error2;
             
-            // Draft posts
             const { count: draftPosts, error: error3 } = await supabase
                 .from('videotabu')
                 .select('*', { count: 'exact', head: true })
@@ -122,7 +113,6 @@ class VideoTabuAPI {
                 
             if (error3) throw error3;
             
-            // Total views
             const { data: viewsData, error: error4 } = await supabase
                 .from('videotabu')
                 .select('view_count');
