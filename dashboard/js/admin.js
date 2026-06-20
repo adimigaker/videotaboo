@@ -1,371 +1,331 @@
-// ============================================
-// CEK FUNGSI
-// ============================================
-console.log('🔍 Checking functions:');
-console.log('  getPosts:', typeof window.getPosts);
-console.log('  createPost:', typeof window.createPost);
-console.log('  deletePost:', typeof window.deletePost);
-console.log('  getStats:', typeof window.getStats);
+// =============================================
+// ADMIN.JS - VideoTabu Dashboard
+// =============================================
 
-// ============================================
-// STATE
-// ============================================
-let currentDeleteId = null;
-
-// ============================================
-// DOM READY
-// ============================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ DOM Ready');
-    
-    // Cek fungsi
-    if (typeof window.getPosts === 'undefined') {
-        document.getElementById('postsTable').innerHTML = 
-            '<tr><td colspan="4" class="text-center" style="color:#ef4444;">❌ Error: API tidak terdefinisi. Cek console.</td></tr>';
-        return;
-    }
-    
-    setupNavigation();
-    setupSidebar();
-    setupForm();
-    setupDeleteConfirm();
-    addMedia();
-    
-    loadDashboard();
-    loadRecentPosts();
-});
+    var posts = [];
+    var editTarget = null;
+    var deleteTarget = null;
 
-// ============================================
-// FUNGSI DASHBOARD
-// ============================================
-async function loadDashboard() {
-    try {
-        console.log('📊 Loading dashboard...');
-        const stats = await window.getStats();
-        console.log('📊 Stats:', stats);
-        
-        document.getElementById('totalPosts').textContent = stats.totalPosts || 0;
-        document.getElementById('publishedPosts').textContent = stats.publishedPosts || 0;
-        document.getElementById('draftPosts').textContent = stats.draftPosts || 0;
-        document.getElementById('totalViews').textContent = stats.totalViews || 0;
-    } catch (error) {
-        console.error('❌ Stats error:', error);
-        showToast('Error: ' + error.message, 'error');
-    }
-}
+    var postsContainer = document.getElementById('postsContainer');
+    var newPostBtn = document.getElementById('newPostBtn');
+    var syncBtn = document.getElementById('syncBtn');
 
-async function loadRecentPosts() {
-    try {
-        const posts = await window.getPosts(0, 5, 'all', '');
-        renderTableRows('recentPostsTable', posts);
-    } catch (error) {
-        console.error('❌ Recent posts error:', error);
-        document.getElementById('recentPostsTable').innerHTML = 
-            `<tr><td colspan="4" class="text-center">Error: ${error.message}</td></tr>`;
-    }
-}
+    var postModal = document.getElementById('postModal');
+    var modalTitle = document.getElementById('modalTitle');
+    var postForm = document.getElementById('postForm');
+    var postTitle = document.getElementById('postTitle');
+    var postGenre = document.getElementById('postGenre');
+    var postStatus = document.getElementById('postStatus');
+    var postCover = document.getElementById('postCover');
+    var postContent = document.getElementById('postContent');
+    var closeModalBtn = document.getElementById('closeModalBtn');
+    var cancelModalBtn = document.getElementById('cancelModalBtn');
+    var formResult = document.getElementById('formResult');
 
-// ============================================
-// FUNGSI POSTS
-// ============================================
-async function loadPosts() {
-    const status = document.getElementById('filterStatus').value;
-    const search = document.getElementById('searchPosts').value;
-    const tbody = document.getElementById('postsTable');
-    
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center">Loading...</td></tr>';
-    
-    try {
-        const posts = await window.getPosts(0, 50, status, search);
-        renderTableRows('postsTable', posts);
-    } catch (error) {
-        console.error('❌ Load posts error:', error);
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center">Error: ${error.message}</td></tr>`;
-        showToast('Error: ' + error.message, 'error');
-    }
-}
+    var deleteModal = document.getElementById('deleteModal');
+    var deletePostName = document.getElementById('deletePostName');
+    var cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-function renderTableRows(tbodyId, posts) {
-    const tbody = document.getElementById(tbodyId);
-    
-    if (!posts || posts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center">📭 Tidak ada post</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = posts.map((post, index) => {
-        const contentCount = post.content ? JSON.parse(post.content).length : 0;
-        const statusClass = post.status === 'published' ? 'tag-published' : 'tag-draft';
-        
-        return `
-        <tr>
-            <td>${index + 1}</td>
-            <td>
-                ${post.cover_url 
-                    ? `<img src="${post.cover_url}" class="cover-thumb" />` 
-                    : `<div class="cover-placeholder">📝</div>`}
-            </td>
-            <td>
-                <div class="post-title">${post.title}</div>
-                <div class="post-meta">
-                    <span>${post.genre || '-'}</span>
-                    <span>📎 ${contentCount} media</span>
-                    <span>📅 ${new Date(post.created_at).toLocaleDateString('id-ID')}</span>
-                    <span class="tag ${statusClass}">${post.status}</span>
-                    ${post.view_count ? `<span>👁️ ${post.view_count}</span>` : ''}
-                </div>
-            </td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-edit" onclick="editPost('${post.id}')">✏️</button>
-                    <button class="btn-delete" onclick="confirmDelete('${post.id}')">🗑️</button>
-                </div>
-            </td>
-        </tr>
-    `}).join('');
-}
+    var toast = document.getElementById('toast');
+    var uploadCoverBtn = document.getElementById('uploadCoverBtn');
+    var coverPreview = document.getElementById('coverPreview');
+    var coverPreviewImg = document.getElementById('coverPreviewImg');
+    var removeCoverBtn = document.getElementById('removeCoverBtn');
 
-// ============================================
-// CREATE POST
-// ============================================
-function setupForm() {
-    document.getElementById('createPostForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        await createPost();
-    });
-}
-
-async function createPost() {
-    const title = document.getElementById('postTitle').value.trim();
-    const genre = document.getElementById('postGenre').value.trim();
-    const status = document.getElementById('postStatus').value;
-    const coverUrl = document.getElementById('postCover').value.trim() || null;
-    
-    if (!title) {
-        showToast('Judul harus diisi!', 'error');
-        return;
+    // ========== TOAST ==========
+    function showToast(msg, type) {
+        toast.textContent = msg;
+        toast.className = 'toast show';
+        if (type) toast.classList.add(type);
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(function() {
+            toast.classList.remove('show');
+        }, 3000);
     }
-    
-    // Collect media
-    const mediaItems = [];
-    document.querySelectorAll('.media-row').forEach(row => {
-        const type = row.querySelector('.media-type').value;
-        const url = row.querySelector('.media-url').value.trim();
-        const cap = row.querySelector('.media-cap').value.trim() || '';
-        
-        if (url) {
-            const obj = {};
-            obj[type] = url;
-            if (cap) obj.cap = cap;
-            mediaItems.push(obj);
-        }
-    });
-    
-    // Auto cover
-    let finalCover = coverUrl;
-    if (!finalCover && mediaItems.length > 0) {
-        const first = mediaItems[0];
-        if (first.img) finalCover = first.img;
-        else if (first.vid) {
-            const vidId = extractYouTubeId(first.vid);
-            if (vidId) finalCover = `https://img.youtube.com/vi/${vidId}/0.jpg`;
-        }
-    }
-    
-    const postData = {
-        title: title,
-        genre: genre || null,
-        content: mediaItems.length > 0 ? JSON.stringify(mediaItems) : null,
-        cover_url: finalCover,
-        status: status,
-        view_count: 0
-    };
-    
-    try {
-        console.log('📤 Creating post:', postData);
-        const result = await window.createPost(postData);
-        console.log('✅ Post created:', result);
-        
-        showToast('✅ Post berhasil dibuat!', 'success');
-        
-        document.getElementById('formResult').innerHTML = `
-            <div class="form-result success">
-                ✅ Post berhasil dibuat!<br>
-                <strong>ID:</strong> ${result.id}<br>
-                <strong>Judul:</strong> ${result.title}<br>
-                <strong>Status:</strong> ${result.status}
-            </div>
-        `;
-        document.getElementById('formResult').classList.remove('hidden');
-        
-        resetForm();
-        loadPosts();
-        loadDashboard();
-        loadRecentPosts();
-        
-    } catch (error) {
-        console.error('❌ Create error:', error);
-        showToast('Error: ' + error.message, 'error');
-        document.getElementById('formResult').innerHTML = `
-            <div class="form-result error">
-                ❌ Error: ${error.message}
-            </div>
-        `;
-        document.getElementById('formResult').classList.remove('hidden');
-    }
-}
 
-// ============================================
-// MEDIA
-// ============================================
-function addMedia() {
-    const container = document.getElementById('mediaContainer');
-    const row = document.createElement('div');
-    row.className = 'media-row';
-    row.innerHTML = `
-        <select class="media-type">
-            <option value="img">🖼️ Gambar</option>
-            <option value="vid">🎬 Video</option>
-        </select>
-        <input type="url" class="media-url" placeholder="URL media">
-        <input type="text" class="media-cap" placeholder="Caption">
-        <button type="button" class="btn-remove" onclick="removeMedia(this)">✕</button>
-    `;
-    container.appendChild(row);
-}
-
-function removeMedia(btn) {
-    const rows = document.querySelectorAll('.media-row');
-    if (rows.length > 1) {
-        btn.closest('.media-row').remove();
-    } else {
-        showToast('Minimal 1 media', 'error');
-    }
-}
-
-// ============================================
-// DELETE
-// ============================================
-function setupDeleteConfirm() {
-    document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
-        if (!currentDeleteId) return;
-        
+    // ========== LOAD POSTS ==========
+    async function loadPosts() {
+        postsContainer.innerHTML = '<div class="empty-state"><h3>⏳ Loading...</h3></div>';
         try {
-            await window.deletePost(currentDeleteId);
-            showToast('✅ Post dihapus!', 'success');
-            closeDeleteModal();
-            loadPosts();
-            loadDashboard();
-            loadRecentPosts();
-        } catch (error) {
-            showToast('Error: ' + error.message, 'error');
+            posts = await API.getAllPosts(true);
+            renderPosts();
+        } catch (err) {
+            console.error('Load error:', err);
+            postsContainer.innerHTML = '<div class="empty-state"><h3>❌ Gagal memuat</h3><button onclick="loadPosts()" class="btn-primary">Coba Lagi</button></div>';
+        }
+    }
+
+    function renderPosts() {
+        postsContainer.innerHTML = '';
+        if (!posts.length) {
+            postsContainer.innerHTML = '<div class="empty-state"><h3>📭 Belum ada post</h3><p>Klik "Post Baru" untuk mulai</p></div>';
+            return;
+        }
+
+        posts.forEach(function(post) {
+            var card = document.createElement('div');
+            card.className = 'post-card';
+
+            var contentCount = post.content ? JSON.parse(post.content).length : 0;
+
+            card.innerHTML = `
+                ${post.cover_url 
+                    ? `<img src="${post.cover_url}" class="post-cover" />` 
+                    : `<div class="post-cover-placeholder">📝</div>`}
+                <div class="post-info">
+                    <h3>${escapeHtml(post.title)}</h3>
+                    <div class="post-meta">
+                        <span>${escapeHtml(post.genre || 'No genre')}</span>
+                        <span>📎 ${contentCount} media</span>
+                        <span>📅 ${new Date(post.created_at).toLocaleDateString('id-ID')}</span>
+                        <span class="post-status ${post.status}">${post.status}</span>
+                        ${post.view_count ? `<span>👁️ ${post.view_count}</span>` : ''}
+                    </div>
+                </div>
+                <div class="post-actions">
+                    <button class="btn-edit" data-id="${post.id}">✏️</button>
+                    <button class="btn-delete" data-id="${post.id}">🗑️</button>
+                </div>
+            `;
+
+            // Edit
+            card.querySelector('.btn-edit').addEventListener('click', function(e) {
+                e.stopPropagation();
+                openEditPost(post.id);
+            });
+
+            // Delete
+            card.querySelector('.btn-delete').addEventListener('click', function(e) {
+                e.stopPropagation();
+                openDeleteModal(post);
+            });
+
+            // Click card to view (bisa diarahkan ke halaman detail nanti)
+            card.addEventListener('click', function() {
+                // Bisa ke detail page nanti
+                showToast('Detail: ' + post.title, 'info');
+            });
+
+            postsContainer.appendChild(card);
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>"]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            if (m === '"') return '&quot;';
+            return m;
+        });
+    }
+
+    // ========== CREATE / EDIT POST ==========
+    function openNewPost() {
+        editTarget = null;
+        modalTitle.textContent = '📝 Post Baru';
+        postForm.reset();
+        postContent.value = '';
+        formResult.style.display = 'none';
+        coverPreview.style.display = 'none';
+        postModal.style.display = 'flex';
+        setTimeout(function() { postTitle.focus(); }, 100);
+    }
+
+    async function openEditPost(id) {
+        try {
+            var post = await API.getPostById(id);
+            if (!post) {
+                showToast('Post tidak ditemukan', 'error');
+                return;
+            }
+
+            editTarget = post;
+            modalTitle.textContent = '✏️ Edit Post';
+            postTitle.value = post.title || '';
+            postGenre.value = post.genre || '';
+            postStatus.value = post.status || 'draft';
+            postCover.value = post.cover_url || '';
+            postContent.value = post.content ? JSON.stringify(JSON.parse(post.content), null, 2) : '';
+
+            // Update cover preview
+            if (post.cover_url) {
+                coverPreviewImg.src = post.cover_url;
+                coverPreview.style.display = 'flex';
+            } else {
+                coverPreview.style.display = 'none';
+            }
+
+            formResult.style.display = 'none';
+            postModal.style.display = 'flex';
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    function closeModal() {
+        postModal.style.display = 'none';
+        editTarget = null;
+    }
+
+    // ========== SAVE POST ==========
+    postForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        var title = postTitle.value.trim();
+        if (!title) {
+            showToast('Judul wajib diisi!', 'error');
+            return;
+        }
+
+        // Parse content JSON
+        var content = null;
+        var contentRaw = postContent.value.trim();
+        if (contentRaw) {
+            try {
+                content = JSON.parse(contentRaw);
+                if (!Array.isArray(content)) {
+                    showToast('Content harus berupa array!', 'error');
+                    return;
+                }
+            } catch (err) {
+                showToast('Format JSON tidak valid: ' + err.message, 'error');
+                return;
+            }
+        }
+
+        var postData = {
+            title: title,
+            genre: postGenre.value.trim() || null,
+            content: content ? JSON.stringify(content) : null,
+            cover_url: postCover.value.trim() || null,
+            status: postStatus.value,
+            view_count: 0
+        };
+
+        try {
+            var result;
+            if (editTarget) {
+                result = await API.updatePost(editTarget.id, postData);
+            } else {
+                result = await API.createPost(postData);
+            }
+
+            if (result.success) {
+                showToast('✅ Post berhasil disimpan!', 'success');
+                closeModal();
+                loadPosts();
+            } else {
+                showToast('❌ Error: ' + result.error, 'error');
+            }
+        } catch (err) {
+            showToast('❌ Error: ' + err.message, 'error');
         }
     });
-}
 
-function confirmDelete(id) {
-    currentDeleteId = id;
-    document.getElementById('deleteModal').classList.remove('hidden');
-}
+    // ========== DELETE ==========
+    function openDeleteModal(post) {
+        deleteTarget = post;
+        deletePostName.textContent = '"' + post.title + '" (' + post.id + ')';
+        deleteModal.style.display = 'flex';
+    }
 
-function closeDeleteModal() {
-    document.getElementById('deleteModal').classList.add('hidden');
-    currentDeleteId = null;
-}
+    function closeDeleteModal() {
+        deleteModal.style.display = 'none';
+        deleteTarget = null;
+    }
 
-// ============================================
-// HELPERS
-// ============================================
-function showCreatePost() {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelector('[data-view="create"]').classList.add('active');
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById('viewCreate').classList.add('active');
-    closeSidebar();
-}
-
-function editPost(id) {
-    showToast('✏️ Fitur edit segera hadir', 'info');
-}
-
-function resetForm() {
-    document.getElementById('createPostForm').reset();
-    document.getElementById('mediaContainer').innerHTML = '';
-    document.getElementById('formResult').innerHTML = '';
-    document.getElementById('formResult').classList.add('hidden');
-    addMedia();
-}
-
-function extractYouTubeId(url) {
-    if (!url) return null;
-    const match = url.match(/(?:youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([^?&]+)/);
-    return match ? match[1] : null;
-}
-
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    const msg = document.getElementById('toastMessage');
-    
-    msg.textContent = message;
-    toast.className = `toast ${type}`;
-    toast.classList.remove('hidden');
-    
-    clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => toast.classList.add('hidden'), 4000);
-}
-
-// ============================================
-// NAVIGATION
-// ============================================
-function setupNavigation() {
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', function() {
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            this.classList.add('active');
-            
-            const view = this.dataset.view;
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.getElementById(`view${view.charAt(0).toUpperCase() + view.slice(1)}`).classList.add('active');
-            
-            if (view === 'posts') loadPosts();
-            if (view === 'dashboard') {
-                loadDashboard();
-                loadRecentPosts();
+    confirmDeleteBtn.addEventListener('click', async function() {
+        if (!deleteTarget) return;
+        try {
+            var result = await API.deletePost(deleteTarget.id);
+            if (result.success) {
+                showToast('✅ Post dihapus!', 'success');
+                closeDeleteModal();
+                loadPosts();
+            } else {
+                showToast('❌ Error: ' + result.error, 'error');
             }
-            
-            closeSidebar();
-        });
+        } catch (err) {
+            showToast('❌ Error: ' + err.message, 'error');
+        }
     });
-}
 
-// ============================================
-// SIDEBAR
-// ============================================
-function setupSidebar() {
-    const menuToggle = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    
-    let overlay = document.querySelector('.sidebar-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.className = 'sidebar-overlay';
-        overlay.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:98;';
-        document.body.appendChild(overlay);
-    }
-    
-    function openSidebar() {
-        sidebar.classList.add('open');
-        overlay.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-    }
-    
-    function closeSidebarFn() {
-        sidebar.classList.remove('open');
-        overlay.style.display = 'none';
-        document.body.style.overflow = '';
-    }
-    
-    menuToggle.addEventListener('click', openSidebar);
-    overlay.addEventListener('click', closeSidebarFn);
-    window.closeSidebar = closeSidebarFn;
-}
+    cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+
+    // ========== UPLOAD COVER ==========
+    uploadCoverBtn.addEventListener('click', function() {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async function() {
+            var file = input.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('Maks 5MB', 'error');
+                return;
+            }
+
+            showToast('Upload cover...', 'info');
+            var result = await API.uploadImage(file);
+
+            if (result.success && result.url) {
+                postCover.value = result.url;
+                coverPreviewImg.src = result.url;
+                coverPreview.style.display = 'flex';
+                showToast('✅ Cover terupload!', 'success');
+            } else {
+                showToast('❌ Upload gagal: ' + (result.error || 'Unknown'), 'error');
+            }
+        };
+        input.click();
+    });
+
+    removeCoverBtn.addEventListener('click', function() {
+        postCover.value = '';
+        coverPreview.style.display = 'none';
+    });
+
+    postCover.addEventListener('input', function() {
+        var url = postCover.value.trim();
+        if (url) {
+            coverPreviewImg.src = url;
+            coverPreview.style.display = 'flex';
+        } else {
+            coverPreview.style.display = 'none';
+        }
+    });
+
+    // ========== EVENT LISTENERS ==========
+    newPostBtn.addEventListener('click', openNewPost);
+    closeModalBtn.addEventListener('click', closeModal);
+    cancelModalBtn.addEventListener('click', closeModal);
+    syncBtn.addEventListener('click', function() {
+        loadPosts();
+        showToast('🔄 Syncing...', 'info');
+    });
+
+    // Close modal on overlay click
+    postModal.addEventListener('click', function(e) {
+        if (e.target === postModal) closeModal();
+    });
+
+    deleteModal.addEventListener('click', function(e) {
+        if (e.target === deleteModal) closeDeleteModal();
+    });
+
+    // ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (postModal.style.display === 'flex') closeModal();
+            if (deleteModal.style.display === 'flex') closeDeleteModal();
+        }
+    });
+
+    // ========== START ==========
+    loadPosts();
+    console.log('✅ VideoTabu Dashboard ready');
+});
