@@ -1,0 +1,72 @@
+/* extends dashboard.css tokens */
+
+.editor-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+}
+.editor-section h4 {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--text-light); margin-bottom: 14px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.field label { display: block; font-size: 12px; color: var(--text-light); margin-bottom: 6px; }
+.field .hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+.field-row { display: flex; gap: 10px; align-items: flex-start; }
+.field-row .input { flex: 1; }
+.btn-icon {
+    background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
+    width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+    color: var(--text); cursor: pointer; flex-shrink: 0;
+}
+
+.preview-img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-top: 10px; }
+
+/* status toggle */
+.switch-row { display: flex; align-items: center; justify-content: space-between; }
+.switch { position: relative; width: 50px; height: 28px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch-track { position: absolute; inset: 0; background: var(--card-2); border: 1px solid var(--border); border-radius: 30px; transition: 0.2s; cursor: pointer; }
+.switch-track::before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: var(--text-light); border-radius: 50%; transition: 0.2s; }
+.switch input:checked + .switch-track { background: rgba(46,204,113,0.2); border-color: var(--success); }
+.switch input:checked + .switch-track::before { transform: translateX(22px); background: var(--success); }
+.status-label { font-size: 14px; font-weight: 600; }
+
+/* content blocks */
+.block-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--card-2); }
+.block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.block-num { font-weight: 700; color: var(--text-light); font-size: 13px; }
+.block-controls { display: flex; gap: 6px; }
+.block-controls button {
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    color: var(--text-light); cursor: pointer;
+}
+.block-controls button:disabled { opacity: 0.3; }
+.block-controls button.danger:active { background: var(--accent-dim); color: var(--accent); }
+
+.toggle-type { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+.toggle-type button {
+    flex: 1; padding: 10px; background: var(--card); border: none; color: var(--text-light);
+    font-weight: 700; font-size: 14px; cursor: pointer;
+}
+.toggle-type button.active { background: var(--accent); color: #fff; }
+
+.vid-preview { width: 100%; aspect-ratio: 16/9; border-radius: 10px; overflow: hidden; margin-top: 10px; background: #000; }
+.vid-preview iframe { width: 100%; height: 100%; border: 0; }
+
+.add-block-btn {
+    width: 100%; padding: 14px; border-radius: 10px; border: 1.5px dashed var(--border);
+    background: transparent; color: var(--text-light); font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+.editor-footer {
+    position: sticky; bottom: 0; display: flex; gap: 10px; padding: 14px 0;
+    background: var(--bg); border-top: 1px solid var(--border); margin-top: 8px;
+}
