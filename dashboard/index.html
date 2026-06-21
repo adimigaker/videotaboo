@@ -1,90 +1,89 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Dashboard - VideoTabu</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>VideoTabu — Dashboard</title>
+<link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
-    <header class="dash-header">
-        <div class="dash-header-inner">
-            <h1>🎬 VideoTabu</h1>
-            <div class="header-actions">
-                <button id="newPostBtn" class="btn-primary">➕ Post Baru</button>
-                <button id="syncBtn" class="btn-secondary">🔄 Sync</button>
-            </div>
-        </div>
-    </header>
 
-    <main id="postsContainer" class="list-view">
-        <!-- Render by JS -->
-    </main>
+<div class="topbar">
+    <div class="logo">VIDEO<span class="accent">TABU</span></div>
+    <span class="badge">DASHBOARD</span>
+    <div class="spacer"></div>
+    <a href="../index.html" class="link-view">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        Lihat Situs
+    </a>
+</div>
 
-    <!-- Modal Create/Edit Post -->
-    <div id="postModal" class="modal-overlay" style="display:none;">
-        <div class="modal-popup modal-lg">
-            <button class="modal-close" id="closeModalBtn">✕</button>
-            <h2 id="modalTitle">Post Baru</h2>
-            <form id="postForm">
-                <div class="form-group">
-                    <label>Judul *</label>
-                    <input type="text" id="postTitle" required placeholder="Masukkan judul">
-                </div>
-                <div class="form-group">
-                    <label>Genre</label>
-                    <input type="text" id="postGenre" placeholder="Travel, Food, Photography">
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select id="postStatus">
-                        <option value="draft">📄 Draft</option>
-                        <option value="published">✅ Published</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Cover URL</label>
-                    <div class="thumb-upload-wrap">
-                        <input type="text" id="postCover" placeholder="https://...">
-                        <button type="button" id="uploadCoverBtn" class="btn-secondary">📤 Upload</button>
-                    </div>
-                    <div id="coverPreview" style="display:none;margin-top:8px;">
-                        <img id="coverPreviewImg" style="max-width:100%;max-height:120px;border-radius:6px;">
-                        <button id="removeCoverBtn" class="btn-remove-sm">✕</button>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Konten Media (JSON)</label>
-                    <textarea id="postContent" rows="6" placeholder='[{"img":"https://...","cap":"Caption"},{"vid":"https://...","cap":"Caption"}]'></textarea>
-                    <small>Format: [{"img":"url","cap":"caption"}, {"vid":"url","cap":"caption"}]</small>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-primary">💾 Simpan</button>
-                    <button type="button" class="btn-secondary" id="cancelModalBtn">Batal</button>
-                </div>
-            </form>
-            <div id="formResult" style="display:none;"></div>
-        </div>
+<div class="container">
+
+    <div class="filter-stack">
+        <input type="text" id="searchInput" class="input" placeholder="Cari judul...">
+        <select id="genreFilter" class="input">
+            <option value="">Semua Genre</option>
+        </select>
+        <select id="statusFilter" class="input">
+            <option value="">Semua Status</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+        </select>
     </div>
 
-    <!-- Modal Delete -->
-    <div id="deleteModal" class="modal-overlay" style="display:none;">
-        <div class="modal-popup modal-sm">
-            <h3>🗑️ Hapus Post?</h3>
-            <p>Yakin ingin menghapus <strong id="deletePostName"></strong>?</p>
-            <div class="confirm-actions">
-                <button class="btn-secondary" id="cancelDeleteBtn">Batal</button>
-                <button class="btn-danger" id="confirmDeleteBtn">Hapus</button>
-            </div>
-        </div>
+    <div class="btn-row">
+        <button class="btn btn-primary" id="newPostBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Tambah Postingan
+        </button>
+        <button class="btn btn-secondary" id="syncBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
     </div>
 
-    <!-- Toast -->
-    <div id="toast" class="toast"></div>
-    <!-- Di bagian bawah body -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/api.js"></script>
-    <script src="js/admin.js"></script>
+    <div class="stats">
+        <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">Total Post</div></div>
+        <div class="stat-card"><div class="num" id="statPublished">0</div><div class="label">Published</div></div>
+        <div class="stat-card"><div class="num" id="statDraft">0</div><div class="label">Draft</div></div>
+    </div>
+
+    <div class="post-list" id="postList"></div>
+
+</div>
+
+<!-- Modal Tambah Postingan -->
+<div class="modal-overlay" id="newPostModal">
+    <div class="modal-box">
+        <h3>Postingan Baru</h3>
+        <form id="newPostForm">
+            <label>Judul *</label>
+            <input type="text" class="input" id="popupTitle" placeholder="Judul postingan" required>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="closeModalBtn" style="flex:1;">Batal</button>
+                <button type="submit" class="btn btn-primary" style="flex:2;">Lanjut ke Editor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Konfirmasi Hapus -->
+<div class="modal-overlay" id="confirmDeleteOverlay">
+    <div class="modal-box">
+        <h3>Hapus postingan?</h3>
+        <p style="color:var(--text-light);font-size:14px;margin-bottom:6px;">Tindakan ini tidak bisa dibatalkan.</p>
+        <p id="deletePostName" style="font-size:14px;font-weight:600;"></p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" id="cancelDeleteBtn" style="flex:1;">Batal</button>
+            <button class="btn btn-primary" id="confirmDeleteBtn" style="flex:1;background:var(--accent);">Hapus</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
 </body>
 </html>
