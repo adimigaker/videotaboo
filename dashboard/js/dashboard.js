@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
         spinner: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
         film: '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>',
         eye: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+        eyePreview: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
         trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
         alert: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
         check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>',
@@ -139,9 +140,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<div class="tags">' + genreTags + '<span class="status-pill ' + item.status + '">' + (item.status === 'published' ? 'Published' : 'Draft') + '</span></div>' +
                         '<div class="meta-row">' + svg.eye + ' ' + (item.view_count || 0) + '</div>' +
                     '</div>' +
+                    '<button class="preview-btn" title="Lihat di situs">' + svg.eyePreview + '</button>' +
                 '</div>';
 
             var card = wrapper.querySelector('.post-card');
+            var previewBtn = wrapper.querySelector('.preview-btn');
+            previewBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open('../post.html?s=' + encodeURIComponent(item.slug), '_blank');
+            });
             setupSwipe(card, item);
             card.addEventListener('click', function(e) {
                 if (this.classList.contains('swiped')) { resetCard(this); return; }
